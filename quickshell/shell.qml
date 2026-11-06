@@ -8,13 +8,18 @@ import "starmap"
 ShellRoot {
     id: shell
     property bool wallpaperVisible: true
+    property bool profiling: false
+    property var lastPerformance: ({})
     Variants {
         model: Quickshell.screens
         Land { required property var modelData; screen: modelData; visible: shell.wallpaperVisible }
     }
     LazyLoader {
         id: overview
-        StarMap { onDone: overview.active = false }
+        StarMap {
+            profiling: shell.profiling
+            onDone: { shell.lastPerformance = performance(); overview.active = false }
+        }
     }
     function toggleMap() {
         if (overview.active) overview.item.close()
@@ -49,6 +54,8 @@ ShellRoot {
         function toggle(): void { shell.toggleMap() }
         function close(): void { if (overview.active) overview.item.close() }
         function abort(): void { overview.active = false }
+        function profile(enabled: bool): void { shell.profiling = enabled }
+        function performance(): string { return JSON.stringify(overview.active ? overview.item.performance() : shell.lastPerformance) }
         function world(): void { if (!overview.active) World.hop(true) }
         function wallpaper(show: bool): void { shell.wallpaperVisible = show }
         function visit(workspace: int): bool {

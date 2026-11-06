@@ -141,6 +141,25 @@ compilation, loaded QML without component errors, keyboard flight and system
 selection, animated cross-monitor landing, emergency close, palette syncing,
 unchanged workspace ownership, and clean `hyprctl configerrors` output.
 
+Optional frame-timing diagnostics can separate flight performance from takeoff
+and landing. They are disabled by default and do not drive rendering while idle:
+
+```sh
+qs ipc -p ./quickshell call nms profile true
+omarchy-nms map
+# Fly, then press Escape to land normally.
+qs ipc -p ./quickshell call nms performance
+qs ipc -p ./quickshell call nms profile false
+```
+
+The report records primary-display frame-swap intervals by phase: average frame
+rate, median and 95th-percentile interval, and frames longer than 25 ms. An
+ordinary landing retains the last report; an emergency abort discards it.
+These are application frame timings, not a guarantee of compositor presentation
+rate. After restarting the companion on this machine, a short flight measurement
+averaged 59.8 fps; takeoff and landing had slower frames. A trial which cached
+the transition blur did not consistently improve landing and was not retained.
+
 ## Credits and license
 
 The landscape shader, space shader, camera, planet rendering, and transition

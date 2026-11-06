@@ -12,6 +12,33 @@ Scope {
     id: map
 
     signal done()
+    property bool profiling: false
+    property var frameSamples: ({})
+    property real frameStamp: 0
+    property string framePhase: ""
+    function recordFrame() {
+        if (!profiling) return
+        const now = Date.now()
+        const phase = takeoff.running ? "takeoff" : descend.running ? "landing" : fly.running || map.flying ? "flight" : "idle"
+        if (phase === framePhase && frameStamp && now - frameStamp < 250) {
+            if (!frameSamples[phase]) frameSamples[phase] = []
+            if (frameSamples[phase].length < 4096) frameSamples[phase].push(now - frameStamp)
+        }
+        framePhase = phase
+        frameStamp = now
+    }
+    function performance() {
+        const result = {}
+        for (const phase of Object.keys(frameSamples)) {
+            const a = frameSamples[phase].slice().sort((x, y) => x - y)
+            if (!a.length) continue
+            const mean = a.reduce((x, y) => x + y, 0) / a.length
+            result[phase] = { samples: a.length, fps: Math.round(10000 / mean) / 10,
+                medianMs: a[Math.floor(a.length * 0.5)], p95Ms: a[Math.floor(a.length * 0.95)],
+                over25ms: a.filter(x => x > 25).length }
+        }
+        return result
+    }
 
     property real px: 0
     property real py: 0
@@ -588,6 +615,7 @@ Scope {
             Connections {
                 target: scene.Window.window
                 function onFrameSwapped() {
+                    if (win.main && map.profiling) map.recordFrame()
                     if (map.gate) map.gateFrames++
                     else if (map.poseDirty) map.flyPath()
                     if (win.main && (takeoff.running || descend.running)) Pace.frame()
