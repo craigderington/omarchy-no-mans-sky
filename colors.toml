@@ -1,3 +1,5 @@
+# Default No Man's Sky palette: deep blue surfaces and warm amber accents.
+# The interactive companion generates world-specific palettes at runtime.
 mode = "dark"
 accent = "#e1b774"
 selection = "#344252"

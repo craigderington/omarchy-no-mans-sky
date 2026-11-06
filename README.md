@@ -40,6 +40,16 @@ on this machine and did not replace any actions.
 
 ## Install
 
+The repository-root [`colors.toml`](colors.toml) is the canonical default palette
+for Omarchy and theme marketplaces. It contains the complete dark palette,
+including surface colors, text colors, accents, and normal/bright terminal
+colors. The interactive companion reads this same file when installing or
+generating a new world's application colors.
+
+Standard Omarchy theme installation applies the palette. The interactive
+landscape and star map require the companion installation below; marketplace
+palette imports do not start the renderer or install its user service.
+
 Requires an active Omarchy 4.5 / Hyprland Lua session with Quickshell and Python
 3.11 or newer. Qt Shader Tools (`/usr/lib/qt6/bin/qsb`) is needed only to rebuild
 the shaders; compiled shaders are included. No root access or downloads are
@@ -104,7 +114,9 @@ journalctl --user -u omarchy-no-mans-sky.service -b
   live window captures during takeoff/landing, and navigation.
 - `quickshell/common/`: adapted rendering components, isolated scene state,
   palette generation, and automatic resolution reduction during slow transitions.
-- `theme/`: initial Omarchy palette and HUD surface styling.
+- `colors.toml`: canonical default Omarchy palette, at the repository root for
+  marketplace discovery.
+- `theme/`: HUD surface styling.
 - `hypr/`: additive shortcuts and theme-specific thin borders / square corners.
 - `tools/control.py`: installation, safe restoration, service management, and
   synchronization of generated world palettes through Omarchy’s theme templates.

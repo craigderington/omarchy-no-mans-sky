@@ -110,8 +110,8 @@ def install():
         managed_write(manifest, bindings, current + MARKER)
     managed_write(manifest, CONFIG / "hypr/no-mans-sky.lua", (ROOT / "hypr/no-mans-sky.lua").read_text())
     managed_link(manifest, HOME / ".local/bin/omarchy-nms", ROOT / "bin/omarchy-nms")
-    for name in ("colors.toml", "shell.toml"):
-        managed_write(manifest, THEME / name, (ROOT / "theme" / name).read_text())
+    managed_write(manifest, THEME / "colors.toml", (ROOT / "colors.toml").read_text())
+    managed_write(manifest, THEME / "shell.toml", (ROOT / "theme/shell.toml").read_text())
     executable = str(ROOT / "quickshell").replace("%", "%%").replace('"', '\\"')
     unit = f'''[Unit]
 Description=No Man's Sky interactive landscape and star map
@@ -167,7 +167,7 @@ def palette_tokens(palette):
     values += [palette["special"][key] for key in ("background", "foreground")]
     if not all(isinstance(c, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", c) for c in values):
         raise ValueError("Palette must contain sixteen RGB hex colors and a background/foreground.")
-    tokens = tomllib.loads((ROOT / "theme/colors.toml").read_text())
+    tokens = tomllib.loads((ROOT / "colors.toml").read_text())
     tokens.update(background=palette["special"]["background"], foreground=palette["special"]["foreground"], accent=colors["color9"], selection=colors["color8"], muted=colors["color8"], dark_foreground=colors["color8"], light_foreground=colors["color7"], bright_foreground=colors["color15"])
     for i, name in enumerate(("red", "green", "yellow", "blue", "magenta", "cyan"), 1):
         tokens[name] = colors[f"color{i}"]
@@ -195,7 +195,7 @@ def sync_palette():
         return
     managed_write(manifest, THEME / "colors.toml", content)
     shell = (ROOT / "theme/shell.toml").read_text()
-    base = tomllib.loads((ROOT / "theme/colors.toml").read_text())
+    base = tomllib.loads((ROOT / "colors.toml").read_text())
     for key in ("background", "foreground", "accent"):
         shell = shell.replace(base[key], tokens[key])
     managed_write(manifest, THEME / "shell.toml", shell)
