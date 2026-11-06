@@ -4,7 +4,7 @@ A fully interactive space desktop for **Omarchy Quattro 4.5**, adapted from
 [Eli F.’s Space rice](https://github.com/elifouts/Dotfiles) shown in
 [this Hyprland post](https://www.reddit.com/r/hyprland/comments/1xo5kte/my_no_mans_sky_inspired_rice/).
 
-![Procedural landscape](docs/assets/landscape.png)
+![No Man's Sky theme showcase](preview.png)
 
 Fly out of your desktop into a navigable star map. Workspaces are star systems,
 open windows are planets, and selecting one takes you back to that workspace
@@ -180,3 +180,9 @@ and adaptation of that work, not an independently recreated camera or renderer.
 See [UPSTREAM.json](UPSTREAM.json) for the pinned commit and original file hashes.
 
 Distributed under **GPL-3.0**, matching the upstream project. See [LICENSE](LICENSE).
+
+The root `preview.png` is an image-generation-assisted showcase composed from
+the real landscape and star-map screenshots under `docs/assets/`. Its layout
+and typography are promotional artwork; the captured scenes derive from the
+credited upstream shaders. The generation prompt is recorded in
+[`docs/preview-prompt.txt`](docs/preview-prompt.txt).
