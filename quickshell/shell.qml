@@ -1,0 +1,68 @@
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import "common"
+import "land"
+import "starmap"
+
+ShellRoot {
+    id: shell
+    property bool wallpaperVisible: true
+    Variants {
+        model: Quickshell.screens
+        Land { required property var modelData; screen: modelData; visible: shell.wallpaperVisible }
+    }
+    LazyLoader {
+        id: overview
+        StarMap { onDone: overview.active = false }
+    }
+    function toggleMap() {
+        if (overview.active) overview.item.close()
+        else { Ui.target = Hypr.focusedScreen(); overview.active = true }
+    }
+    property bool palettePending: false
+    Connections {
+        target: World
+        function onPaletteChanged() { shell.palettePending = true; paletteTimer.restart() }
+    }
+    Connections {
+        target: Ui
+        function onHoldThemeChanged() { if (!Ui.holdTheme && shell.palettePending) paletteTimer.restart() }
+    }
+    Timer {
+        id: paletteTimer
+        interval: 400
+        onTriggered: {
+            if (Ui.holdTheme || !shell.palettePending || paletteSync.running) return
+            shell.palettePending = false
+            if (Quickshell.env("NMS_SYNC_PALETTE") === "1") paletteSync.running = true
+        }
+    }
+    Process {
+        id: paletteSync
+        command: [Quickshell.env("HOME") + "/.local/bin/omarchy-nms", "sync-palette"]
+        stderr: StdioCollector { onStreamFinished: if (text.trim()) console.warn("Palette sync:", text.trim()) }
+        onExited: { if (shell.palettePending) paletteTimer.restart() }
+    }
+    IpcHandler {
+        target: "nms"
+        function toggle(): void { shell.toggleMap() }
+        function close(): void { if (overview.active) overview.item.close() }
+        function abort(): void { overview.active = false }
+        function world(): void { if (!overview.active) World.hop(true) }
+        function wallpaper(show: bool): void { shell.wallpaperVisible = show }
+        function visit(workspace: int): bool {
+            if (!overview.active || overview.item.busy) return false
+            const system = overview.item.used.find(s => s.id === workspace)
+            if (!system) return false
+            overview.item.warp(system)
+            return true
+        }
+        function status(): string {
+            const map = overview.active ? overview.item : null
+            return JSON.stringify({ map: overview.active, phase: !map ? "desktop" : map.busy ? "transition" : "flight",
+                system: map?.sel?.id ?? 0, systems: map?.used?.length ?? 0,
+                position: map ? [map.px, map.py, map.pz] : [], wallpaper: shell.wallpaperVisible, hue: World.hue, seed: World.landSeed })
+        }
+    }
+}

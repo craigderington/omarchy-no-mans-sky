@@ -1,0 +1,134 @@
+{
+  "repository": "https://github.com/elifouts/Dotfiles",
+  "commit": "3f6d53c63ee72ca8ada6c301eb97b9a90e72f5bc",
+  "license": "GPL-3.0",
+  "attribution": "Eli F. / elifouts",
+  "files": [
+    {
+      "path": "quickshell/common/Hud.qml",
+      "upstream_path": ".config/hypr/Space/utilities/common/Hud.qml",
+      "upstream_blob_sha": "54a64c991f0019177dc6555399f968793c3a12e1",
+      "modified": false
+    },
+    {
+      "path": "quickshell/common/Hypr.qml",
+      "upstream_path": ".config/hypr/shared/core/Hypr.qml",
+      "upstream_blob_sha": "e712967a008ea768a8c4d256d2e9876232e55863",
+      "modified": true
+    },
+    {
+      "path": "quickshell/common/Orb.qml",
+      "upstream_path": ".config/hypr/Space/utilities/common/Orb.qml",
+      "upstream_blob_sha": "a146c7194c6633c41b990803eebe0817e64e6b3d",
+      "modified": false
+    },
+    {
+      "path": "quickshell/common/Pace.qml",
+      "upstream_path": ".config/hypr/Space/utilities/common/Pace.qml",
+      "upstream_blob_sha": "8c96beb7e41594e4b8e38442bacf19c9f7496aa1",
+      "modified": false
+    },
+    {
+      "path": "quickshell/common/Settle.qml",
+      "upstream_path": ".config/hypr/shared/ui/Settle.qml",
+      "upstream_blob_sha": "8544dd5ec72a52ac7d11fc0caf2488a4f5635072",
+      "modified": false
+    },
+    {
+      "path": "quickshell/common/Store.qml",
+      "upstream_path": ".config/hypr/Space/utilities/common/Store.qml",
+      "upstream_blob_sha": "a9dba7af3bdab81548a8bbbbdf66e6aacfffacea",
+      "modified": true
+    },
+    {
+      "path": "quickshell/common/Theme.qml",
+      "upstream_path": ".config/hypr/Space/utilities/common/Theme.qml",
+      "upstream_blob_sha": "e524a49d97af988ad9e26e3ed0e0b8e65099822d",
+      "modified": true
+    },
+    {
+      "path": "quickshell/common/Ui.qml",
+      "upstream_path": ".config/hypr/Space/utilities/common/Ui.qml",
+      "upstream_blob_sha": "f9a3a4038f974a94c316b5203571eeb9c57d24f1",
+      "modified": false
+    },
+    {
+      "path": "quickshell/common/World.qml",
+      "upstream_path": ".config/hypr/Space/utilities/common/World.qml",
+      "upstream_blob_sha": "d793ac0407a8b6537374693da56ac1020537a22b",
+      "modified": true
+    },
+    {
+      "path": "quickshell/common/decode.js",
+      "upstream_path": ".config/hypr/Space/utilities/common/decode.js",
+      "upstream_blob_sha": "63ed7bec1657ecdc50f40a58ba079f6713b92e8c",
+      "modified": false
+    },
+    {
+      "path": "quickshell/common/orb.frag",
+      "upstream_path": ".config/hypr/Space/utilities/common/orb.frag",
+      "upstream_blob_sha": "235e4f8eff78c76032eaa1fd670c48aa3214b549",
+      "modified": false
+    },
+    {
+      "path": "quickshell/common/orb.frag.qsb",
+      "upstream_path": ".config/hypr/Space/utilities/common/orb.frag.qsb",
+      "upstream_blob_sha": "6e0ed5f6954805fd3810c631deefbda91abfda57",
+      "modified": false
+    },
+    {
+      "path": "quickshell/land/Land.qml",
+      "upstream_path": ".config/hypr/Space/utilities/land/Land.qml",
+      "upstream_blob_sha": "a3bffd557cd6e78ef8097b733b274ce6c9e267e4",
+      "modified": true
+    },
+    {
+      "path": "quickshell/land/Terrain.qml",
+      "upstream_path": ".config/hypr/Space/utilities/land/Terrain.qml",
+      "upstream_blob_sha": "a11887b03bb8c35bc1dbe0e6fa4a787dcae098a8",
+      "modified": false
+    },
+    {
+      "path": "quickshell/land/land.frag",
+      "upstream_path": ".config/hypr/Space/utilities/land/land.frag",
+      "upstream_blob_sha": "9b0eb1286873ff319b2feda87720b619d4ae2866",
+      "modified": false
+    },
+    {
+      "path": "quickshell/land/land.frag.qsb",
+      "upstream_path": ".config/hypr/Space/utilities/land/land.frag.qsb",
+      "upstream_blob_sha": "4ec7b290e5035e9510ff0b12c185416fb15d59d6",
+      "modified": false
+    },
+    {
+      "path": "quickshell/shell.qml",
+      "upstream_path": ".config/hypr/Space/utilities/shell.qml",
+      "upstream_blob_sha": "c088192a93680780cd5d39cbe5f9f7d8df93160d",
+      "modified": true
+    },
+    {
+      "path": "quickshell/starmap/StarMap.qml",
+      "upstream_path": ".config/hypr/Space/utilities/starmap/StarMap.qml",
+      "upstream_blob_sha": "1b93667a792730076f4ae754af06dbab223fcb46",
+      "modified": true
+    },
+    {
+      "path": "quickshell/starmap/glow.png",
+      "upstream_path": ".config/hypr/Space/utilities/starmap/glow.png",
+      "upstream_blob_sha": "daa34f973f9ceb6c3c8285ffd319dd02f20dd807",
+      "modified": false
+    },
+    {
+      "path": "quickshell/starmap/starmap.frag",
+      "upstream_path": ".config/hypr/Space/utilities/starmap/starmap.frag",
+      "upstream_blob_sha": "0bdd3ea00332623bc096b8bde0318e4ac717772b",
+      "modified": false
+    },
+    {
+      "path": "quickshell/starmap/starmap.frag.qsb",
+      "upstream_path": ".config/hypr/Space/utilities/starmap/starmap.frag.qsb",
+      "upstream_blob_sha": "7c68e675e6d578019e7472b2b2aff5fe3eff7574",
+      "modified": false
+    }
+  ]
+}
