@@ -12,6 +12,8 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
+import time
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +24,8 @@ MANIFEST = STATE / "install.json"
 UNIT = "omarchy-no-mans-sky.service"
 THEME = CONFIG / "omarchy/themes/no-mans-sky"
 CURRENT = HOME / ".local/state/omarchy/current"
+OMARCHY = Path(os.environ.get("OMARCHY_PATH", "/usr/share/omarchy"))
+LOCK_ID = "nms.lock"
 MARKER = '\n-- BEGIN omarchy-no-mans-sky\nrequire("hypr.no-mans-sky")\n-- END omarchy-no-mans-sky\n'
 
 
@@ -29,10 +33,13 @@ def run(*args, check=True, env=None):
     return subprocess.run(args, check=check, text=True, capture_output=True, env=env)
 
 
-def atomic(path: Path, text: str):
+def atomic(path: Path, text: str | bytes):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".nms-tmp")
-    tmp.write_text(text)
+    if isinstance(text, bytes):
+        tmp.write_bytes(text)
+    else:
+        tmp.write_text(text)
     tmp.replace(path)
 
 
@@ -89,6 +96,61 @@ def managed_link(manifest, path, target):
     save_manifest(manifest)
 
 
+def install_lock(manifest):
+    """Clone the installed lock service, replacing only its presentation."""
+    if run("omarchy-shell", "lock", "isLocked").stdout.strip() == "true":
+        raise ValueError("Unlock the session before installing the lock screen.")
+    source = OMARCHY / "shell/plugins/lock"
+    if not (source / "Service.qml").is_file():
+        raise ValueError("The Omarchy 4.5 lock plugin is required.")
+    plugins = CONFIG / "omarchy/plugins"
+    destination = plugins / LOCK_ID
+    # A personal lock clone may contain functional changes. Leave it in place.
+    for candidate in plugins.glob("*/manifest.json"):
+        metadata = json.loads(candidate.read_text())
+        if metadata.get("omarchy", {}).get("clonedFrom") == "omarchy.lock" and candidate.parent != destination:
+            raise ValueError(f"Preserving another lock-screen clone: {candidate.parent}")
+    owns_files = any(Path(name).is_relative_to(destination) for name in manifest["files"])
+    if destination.exists() and not owns_files:
+        raise ValueError(f"Preserving an existing plugin directory: {destination}")
+    # Publish the manifest last so first discovery sees a complete plugin.
+    for path in sorted(source.rglob("*")):
+        if path.is_file() and path.name not in ("manifest.json", "LockView.qml"):
+            managed_write(manifest, destination / path.relative_to(source), path.read_bytes())
+    for path in sorted((ROOT / "lockscreen").rglob("*")):
+        if path.is_file():
+            managed_write(manifest, destination / path.relative_to(ROOT / "lockscreen"), path.read_bytes())
+    managed_write(manifest, destination / "landscape.png", (ROOT / "docs/assets/landscape.png").read_bytes())
+    metadata = json.loads((source / "manifest.json").read_text())
+    metadata.update(id=LOCK_ID, name="No Man’s Sky Lock Screen",
+        description="No Man’s Sky presentation with Omarchy password and fingerprint authentication.")
+    metadata.setdefault("omarchy", {})["clonedFrom"] = "omarchy.lock"
+    managed_write(manifest, destination / "manifest.json", json.dumps(metadata, indent=2) + "\n")
+    was_installed = manifest.get("lock_plugin", False)
+    manifest["lock_plugin"] = True
+    save_manifest(manifest)
+    run("omarchy-shell", "shell", "rescanPlugins")
+    # Discovery runs asynchronously in the shell, as in `plugin clone`.
+    for attempt in range(40):
+        catalog = json.loads(run("omarchy-shell", "shell", "listPlugins").stdout)
+        if any(plugin["id"] == LOCK_ID for plugin in catalog):
+            break
+        time.sleep(0.05)
+    else:
+        raise ValueError("The shell did not discover the lock-screen clone.")
+    # keepLoaded services survive a code rescan. Re-enable our clone while
+    # unlocked to pick up an updated view/service without restarting the shell.
+    if was_installed:
+        run("omarchy", "plugin", "disable", LOCK_ID)
+    try:
+        run("omarchy", "plugin", "enable", LOCK_ID)
+        run("omarchy-shell", "lock", "isLocked")
+    except subprocess.CalledProcessError:
+        run("omarchy", "plugin", "disable", LOCK_ID, check=False)
+        raise
+    print("Installed No Man’s Sky lock screen; preview with omarchy-nms preview-lock.")
+
+
 def install():
     manifest = read_manifest()
     if manifest and manifest["repository"] != str(ROOT):
@@ -112,6 +174,8 @@ def install():
     managed_link(manifest, HOME / ".local/bin/omarchy-nms", ROOT / "bin/omarchy-nms")
     managed_write(manifest, THEME / "colors.toml", (ROOT / "colors.toml").read_text())
     managed_write(manifest, THEME / "shell.toml", (ROOT / "theme/shell.toml").read_text())
+    managed_link(manifest, THEME / "preview.png", ROOT / "preview.png")
+    install_lock(manifest)
     executable = str(ROOT / "quickshell").replace("%", "%%").replace('"', '\\"')
     unit = f'''[Unit]
 Description=No Man's Sky interactive landscape and star map
@@ -152,6 +216,49 @@ def apply_theme(name):
     run("omarchy", "restart", "terminal")
 
 
+def refresh_current_palette():
+    """Regenerate app colors without selecting a theme or running its hooks.
+
+    The caller holds Omarchy's theme-set lock and has checked the selected name.
+    """
+    stage = CURRENT / "next-theme"
+    if stage.exists():
+        raise ValueError(f"Theme staging directory already exists: {stage}")
+    try:
+        shutil.copytree(THEME, stage, symlinks=True)
+        run("omarchy", "theme", "set", "templates")
+        # Keep the old generated theme until replacement succeeds. The shared
+        # lock prevents Omarchy's own switcher from staging another theme here.
+        with tempfile.TemporaryDirectory(prefix=".nms-palette-", dir=CURRENT) as temporary:
+            previous = Path(temporary) / "theme"
+            (CURRENT / "theme").rename(previous)
+            try:
+                stage.rename(CURRENT / "theme")
+            except OSError:
+                previous.rename(CURRENT / "theme")
+                raise
+        payloads = [base64.b64encode((CURRENT / "theme" / file).read_bytes()).decode()
+            for file in ("colors.toml", "shell.toml")]
+        run("omarchy-shell", "shell", "applyTheme", *payloads)
+        run("hyprctl", "reload")
+        errors = run("hyprctl", "configerrors").stdout.strip()
+        if errors:
+            raise ValueError(errors)
+        run("omarchy", "restart", "terminal")
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
+
+
+def selected_theme():
+    name = CURRENT / "theme.name"
+    return name.read_text().strip() if name.exists() else ""
+
+
+def theme_lock_path():
+    return Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "omarchy-theme-set.lock"
+
+
 def start():
     # Stop only a development instance of this exact config before systemd
     # takes ownership; Omarchy's own Quickshell process is never touched.
@@ -179,7 +286,7 @@ def palette_tokens(palette):
 
 
 def sync_palette():
-    if not (CURRENT / "theme.name").exists() or (CURRENT / "theme.name").read_text().strip() != "no-mans-sky":
+    if selected_theme() != "no-mans-sky":
         return
     manifest = read_manifest()
     if not manifest:
@@ -191,15 +298,24 @@ def sync_palette():
         raise ValueError("Palette file is too large.")
     tokens = palette_tokens(json.loads(palette_file.read_text()))
     content = "\n".join(f'{key} = {json.dumps(value)}' for key, value in tokens.items()) + "\n"
-    if (THEME / "colors.toml").read_text() == content:
-        return
-    managed_write(manifest, THEME / "colors.toml", content)
-    shell = (ROOT / "theme/shell.toml").read_text()
-    base = tomllib.loads((ROOT / "colors.toml").read_text())
-    for key in ("background", "foreground", "accent"):
-        shell = shell.replace(base[key], tokens[key])
-    managed_write(manifest, THEME / "shell.toml", shell)
-    apply_theme("no-mans-sky")
+    with theme_lock_path().open("w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        # A user selection may have completed while palette generation waited.
+        if selected_theme() != "no-mans-sky":
+            return
+        shell = (ROOT / "theme/shell.toml").read_text()
+        base = tomllib.loads((ROOT / "colors.toml").read_text())
+        for key in ("background", "foreground", "accent"):
+            shell = shell.replace(base[key], tokens[key])
+        if ((THEME / "colors.toml").read_text() == content
+                and (CURRENT / "theme/colors.toml").exists()
+                and (CURRENT / "theme/colors.toml").read_text() == content
+                and (CURRENT / "theme/shell.toml").exists()
+                and (CURRENT / "theme/shell.toml").read_text() == shell):
+            return
+        managed_write(manifest, THEME / "colors.toml", content)
+        managed_write(manifest, THEME / "shell.toml", shell)
+        refresh_current_palette()
 
 
 def restore(path, record):
@@ -220,6 +336,12 @@ def uninstall():
     if not manifest:
         print("Nothing installed.")
         return
+    if manifest.get("lock_plugin"):
+        if run("omarchy-shell", "lock", "isLocked").stdout.strip() == "true":
+            raise ValueError("Unlock the session before uninstalling the lock screen.")
+        # Disabling a clone restores Omarchy's original lock through the
+        # shell's own plugin API, without restoring an old shell.json.
+        run("omarchy", "plugin", "disable", LOCK_ID)
     run("systemctl", "--user", "disable", "--now", UNIT)
     run("qs", "kill", "-p", str(ROOT / "quickshell"), check=False)
     bindings = CONFIG / "hypr/bindings.lua"
@@ -234,6 +356,15 @@ def uninstall():
     for name, record in reversed(list(manifest["files"].items())):
         if name != str(bindings):
             restore(Path(name), record)
+    if manifest.get("lock_plugin"):
+        run("omarchy-shell", "shell", "rescanPlugins")
+        destination = CONFIG / "omarchy/plugins" / LOCK_ID
+        if destination.is_dir():
+            for directory in sorted((p for p in destination.rglob("*") if p.is_dir()), reverse=True):
+                if not any(directory.iterdir()):
+                    directory.rmdir()
+            if not any(destination.iterdir()):
+                destination.rmdir()
     run("systemctl", "--user", "daemon-reload")
     run("hyprctl", "reload")
     MANIFEST.rename(STATE / "last-uninstall.json")
@@ -246,7 +377,7 @@ def ipc(action):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["install", "activate", "start", "stop", "map", "world", "close", "abort", "status", "doctor", "sync-palette", "uninstall"])
+    parser.add_argument("command", choices=["install", "install-lock", "preview-lock", "activate", "start", "stop", "map", "world", "close", "abort", "status", "doctor", "sync-palette", "uninstall"])
     parser.add_argument("--no-start", action="store_true")
     parser.add_argument("--no-theme", action="store_true")
     args = parser.parse_args()
@@ -260,6 +391,23 @@ def main():
                 apply_theme("no-mans-sky")
             if not args.no_start:
                 start()
+        elif args.command == "install-lock":
+            manifest = read_manifest()
+            if not manifest or manifest["repository"] != str(ROOT):
+                raise ValueError("Run install from this checkout first.")
+            shell = (ROOT / "theme/shell.toml").read_text()
+            base = tomllib.loads((ROOT / "colors.toml").read_text())
+            palette = tomllib.loads((THEME / "colors.toml").read_text())
+            for key in ("background", "foreground", "accent"):
+                shell = shell.replace(base[key], palette[key])
+            install_lock(manifest)
+            managed_write(manifest, THEME / "shell.toml", shell)
+            with theme_lock_path().open("w") as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                if selected_theme() == "no-mans-sky":
+                    refresh_current_palette()
+        elif args.command == "preview-lock":
+            print(run("omarchy-shell", "lock", "preview").stdout.strip())
         elif args.command == "activate":
             if not read_manifest():
                 raise ValueError("Run install first.")

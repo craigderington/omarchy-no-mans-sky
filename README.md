@@ -15,9 +15,18 @@ are GPU shaders; the camera and interface are QML and JavaScript.
 ![Interactive star map](docs/assets/starmap.png)
 
 The renderer runs alongside Omarchy’s existing shell. Your bar widgets,
-launcher, notifications, dock, lock screen, and application shortcuts remain
+launcher, notifications, dock, and application shortcuts remain
 available. This ports the landscape and interactive map, rather than installing
 the author’s entire desktop configuration. It does not run the upstream installer.
+
+The companion also gives Omarchy’s unlock screen a No Man’s Sky landscape,
+Atlas-inspired emblem, clock, and amber HUD. Password and fingerprint
+authentication continue to use Omarchy’s installed lock service.
+
+![No Man’s Sky unlock screen](docs/assets/unlock.png)
+
+With No Man's Sky selected, focused windows use 85% opacity and unfocused
+windows use 75% opacity to reveal more of the landscape.
 
 ## Controls
 
@@ -61,9 +70,28 @@ cd ~/Projects/omarchy-no-mans-sky
 ```
 
 Installation adds three keybindings and a theme, installs a user systemd service,
-and enables it for future graphical sessions. Existing files are backed up before
-they are changed. Run this from your normal desktop terminal, where the user
+enables it for future graphical sessions, and installs a local lock-screen clone.
+Existing files are backed up before they are changed. The installed theme links
+to the repository's `preview.png`
+so it appears in Omarchy's graphical theme switcher.
+Run this from your normal desktop terminal, where the user
 session bus and GPU are accessible.
+
+To add the unlock screen to an existing companion installation:
+
+```sh
+./bin/omarchy-nms install-lock
+./bin/omarchy-nms preview-lock
+```
+
+The preview does not lock or authenticate; click anywhere to dismiss it.
+The design fits all displays, including the 1024×600 auxiliary screen. It uses
+a still from the landscape renderer, so no animation runs behind the prompt.
+The custom scene appears only while No Man’s Sky is selected; other themes use
+Omarchy’s normal lock-screen appearance. The clone copies the installed
+`Service.qml` and fingerprint model unchanged. Run `install-lock` again after
+an Omarchy update to refresh those copies. Installation refuses to replace
+another personal lock clone and must run while the session is unlocked.
 
 Your monitor layout and global workspace rules are not edited:
 
@@ -84,6 +112,7 @@ and the largest display gets the main moon.
 ```sh
 omarchy-nms status       # Renderer state
 omarchy-nms doctor       # Service, startup, renderer, and Hyprland checks
+omarchy-nms preview-lock # Preview the unlock screen; click to dismiss
 omarchy-nms map          # Open map / animated return
 omarchy-nms world        # New terrain and palette
 omarchy-nms abort        # Immediate return if a transition is inconvenient
@@ -98,6 +127,10 @@ installed version; subsequent edits are preserved and reported. World state,
 original-file backups, and the last installation manifest remain under
 `~/.local/state/omarchy-no-mans-sky/`. The previous theme is restored only if
 No Man’s Sky is still selected.
+
+Uninstallation disables the local `nms.lock` clone through Omarchy’s plugin API,
+which restores the original lock service and preserves other shell settings.
+To switch back sooner, run `omarchy plugin disable nms.lock`.
 
 For a runtime problem, `Super+Alt+Escape` releases the map immediately. From a
 terminal you can also run:
@@ -117,6 +150,8 @@ journalctl --user -u omarchy-no-mans-sky.service -b
 - `colors.toml`: canonical default Omarchy palette, at the repository root for
   marketplace discovery.
 - `theme/`: HUD surface styling.
+- `lockscreen/`: themed unlock view and translated HUD labels; the authentication
+  service is cloned from the installed Omarchy version.
 - `hypr/`: additive shortcuts and theme-specific thin borders / square corners.
 - `tools/control.py`: installation, safe restoration, service management, and
   synchronization of generated world palettes through Omarchy’s theme templates.
@@ -127,12 +162,16 @@ templates generate application colors; the controller updates the running shell,
 terminals, and Hyprland locally. It does not invoke remote-machine theme hooks
 or change the fallback wallpaper. Applications which read themes at launch pick
 up their generated settings the next time they open. Switching to a different
-Omarchy theme stops automatic palette syncing; stop the companion to reveal
-Omarchy’s wallpaper again.
+Omarchy theme automatically hides the landscape, closes the map, and stops
+palette syncing so the selected wallpaper and shell can take over. Selecting
+No Man’s Sky brings the landscape back. Palette updates share Omarchy’s
+theme-switch lock and regenerate colors without reselecting No Man’s Sky,
+so a queued update cannot undo a new theme selection.
 
 The original desktop widgets, launcher, settings panels, pypr scratchpad daemon,
-and lock screen are not imported. Omarchy provides those functions. Normal
-Hyprland special workspaces with windows still appear in the map. Flight can
+and upstream lock screen are not imported. Omarchy provides those functions,
+with a custom presentation for its own unlock screen. Normal Hyprland special
+workspaces with windows still appear in the map. Flight can
 temporarily capture your open windows for the transition; these frames remain
 inside the renderer and are not saved or transmitted.
 
@@ -180,6 +219,8 @@ and adaptation of that work, not an independently recreated camera or renderer.
 See [UPSTREAM.json](UPSTREAM.json) for the pinned commit and original file hashes.
 
 Distributed under **GPL-3.0**, matching the upstream project. See [LICENSE](LICENSE).
+The unlock view adapts Omarchy 4.5’s `LockView.qml` (GPL-3.0); its authentication
+service and fingerprint model are copied locally from the installed Omarchy.
 
 The root `preview.png` is an image-generation-assisted showcase composed from
 the real landscape and star-map screenshots under `docs/assets/`. Its layout
